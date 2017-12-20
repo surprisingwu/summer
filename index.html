@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="spring.js"></script>
+</head>
+
+<body>
+    <script>
+        spring.jsonp('http://127.0.0.1:3000/userinfo', {
+            data: {
+                name: 'wyt'
+            },
+            callback: function(data) {
+                console.log(data)
+            },
+            error: function(e) {
+                console.log(e)
+            },
+            timeout: 20000
+        })
+    </script>
+</body>
+
+</html>
