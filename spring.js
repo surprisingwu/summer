@@ -5,7 +5,9 @@
         this.isHttps = false
     }
 
-    // 公有方法，存放在原型对象中
+    var class2type = {}
+    var toString = Object.prototype.toString
+        // 公有方法，存放在原型对象中
     Spring.prototype = {
         'constructor': Spring,
         // 检测一个对象的类型    eg: 'Fouction'
@@ -14,7 +16,49 @@
                 return Object.prototype.toString.call(obj) === '[object ' + type + ']'
             }
         },
+        // 检测一个对象的类型
+        type: function(obj) {
+            if (obj == null) {
+                return obj + "";
+            }
 
+            return typeof obj === "object" || typeof obj === "function" ?
+                class2type[toString.call(obj)] || "object" :
+                typeof obj;
+        },
+        // 是否是伪数组
+        isArrayLike: function(obj) {
+            var length = !!obj && "length" in obj && obj.length,
+                type = this.type(obj);
+
+            if (type === "function" || this.isWindow(obj)) {
+                return false;
+            }
+
+            return type === "array" || length === 0 ||
+                typeof length === "number" && length > 0 && (length - 1) in obj;
+        },
+        // 是否是window对象
+        isWindow: function(obj) {
+            return obj != null && obj === obj.window;
+        },
+        // 是否是一个对象
+        isObject: function(obj) {
+            return this.type(obj) === 'object'
+        },
+        // 是否是一个方法
+        isFunction: function(obj) {
+            return this.type(obj) === 'function'
+        },
+        // 是否是数字
+        isNumeric: function(obj) {
+            var type = this.type(obj);
+            return (type === "number" || type === "string") && !isNaN(obj - parseFloat(obj));
+        },
+        // 是否是原生的对象,继承自Object
+        isPlainObject: function(obj) {
+            return this.isObject(obj) && !this.isWindow(obj) && getProto(obj) === Object.prototype
+        },
         /**
          * @ jsonp跨域简单的封装(需要后台配合)
          * url: String  后台的url
@@ -98,7 +142,9 @@
                 }, timeout);
             }
         },
-        // 通过递归实现 深拷贝
+        /**
+         * @param 实现深复制   
+         */
         deepCopy: function(source, target) {
             var target = target || {}
             for (var i in source) {
@@ -133,6 +179,87 @@
         },
         userAgent: function() {
             return navigator.userAgent.toLowerCase()
+        },
+        // 对外可以扩展
+        extend: function() {
+            var options, name, src, copy, copyIsArray, clone,
+                target = arguments[0] || {},
+                i = 1,
+                length = arguments.length,
+                deep = false;
+            // 默认false , true深拷贝
+            if (typeof target === "boolean") {
+                deep = target;
+                target = arguments[i] || {};
+                i++;
+            }
+
+            if (typeof target !== "object" && !this.isFunction(target)) {
+                target = {};
+            }
+            // 是有一个参数时, 挂载到框架上
+            if (i === length) {
+                target = this;
+                i--;
+            }
+
+            for (; i < length; i++) {
+
+                if ((options = arguments[i]) != null) {
+
+                    for (name in options) {
+                        src = target[name];
+                        copy = options[name];
+
+                        if (target === copy) {
+                            continue;
+                        }
+
+                        if (deep && copy && (this.isPlainObject(copy) ||
+                                (copyIsArray = Array.isArray(copy)))) {
+
+                            if (copyIsArray) {
+                                copyIsArray = false;
+                                clone = src && Array.isArray(src) ? src : [];
+
+                            } else {
+                                clone = src && this.isPlainObject(src) ? src : {};
+                            }
+
+                            // Never move original objects, clone them
+                            target[name] = this.extend(deep, clone, copy);
+
+                            // Don't bring in undefined values
+                        } else if (copy !== undefined) {
+                            target[name] = copy;
+                        }
+                    }
+                }
+            }
+
+            // Return the modified object
+            return target;
+        },
+        // 遍历的方法
+        each: function(obj, callback) {
+            var length, i = 0;
+
+            if (this.isArrayLike(obj)) {
+                length = obj.length;
+                for (; i < length; i++) {
+                    if (callback.call(obj[i], obj[i], i) === false) {
+                        break;
+                    }
+                }
+            } else {
+                for (i in obj) {
+                    if (callback.call(obj[i], obj[i], i) === false) {
+                        break;
+                    }
+                }
+            }
+
+            return obj;
         },
         // date: dateObj  fmt:日期格式（yyyy-MM-dd）
         formatDate: function(date, fmt) {
